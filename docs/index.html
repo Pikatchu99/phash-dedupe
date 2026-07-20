@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>phash-dedupe — trouvez les images en double, sans le cloud</title>
+<meta name="description" content="CLI et bibliothèque TypeScript pour détecter les images quasi-identiques via hachage perceptuel (dHash). Zéro dépendance cloud, MIT.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f6f7f9;
+    --text: #1a1d23;
+    --text-muted: #5b6270;
+    --border: #e3e5e9;
+    --accent: #2f6feb;
+    --accent-soft: #eaf1ff;
+    --code-bg: #0f1117;
+    --code-text: #e6e8ee;
+    --danger: #b3261e;
+    --good: #1e7a34;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115;
+      --bg-soft: #171a21;
+      --text: #e7e9ee;
+      --text-muted: #9aa2b1;
+      --border: #2a2e37;
+      --accent: #7fb0ff;
+      --accent-soft: #182640;
+      --code-bg: #0a0c10;
+      --code-text: #dfe3ec;
+      --danger: #ff8a80;
+      --good: #79d99a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  a { color: var(--accent); }
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+  header.hero {
+    padding: 4.5rem 0 2.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .eyebrow {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  h1 {
+    font-size: 2.4rem;
+    margin: 0.4rem 0 0.8rem;
+    letter-spacing: -0.02em;
+  }
+  .lede {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    max-width: 60ch;
+  }
+  .cta-row {
+    margin-top: 1.8rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.1rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.92rem;
+    border: 1px solid var(--border);
+  }
+  .btn.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: transparent;
+  }
+  .btn.ghost {
+    color: var(--text);
+    background: var(--bg-soft);
+  }
+  section {
+    padding: 2.6rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  section:last-of-type { border-bottom: none; }
+  h2 {
+    font-size: 1.4rem;
+    margin: 0 0 1rem;
+    letter-spacing: -0.01em;
+  }
+  h3 {
+    font-size: 1.05rem;
+    margin: 1.6rem 0 0.6rem;
+  }
+  p { color: var(--text); }
+  p.muted { color: var(--text-muted); }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 1rem 1.1rem;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 0.6rem 0 1.2rem;
+  }
+  code {
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  :not(pre) > code {
+    background: var(--bg-soft);
+    padding: 0.15em 0.4em;
+    border-radius: 5px;
+    font-size: 0.88em;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0 1.4rem;
+    font-size: 0.9rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  ul.limits {
+    padding-left: 1.2rem;
+  }
+  ul.limits li { margin-bottom: 0.6rem; }
+  .steps {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+    margin: 0.8rem 0 1.2rem;
+  }
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 2.2rem;
+    margin-bottom: 0.9rem;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  footer {
+    padding: 2.5rem 0 4rem;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
+  footer a { color: var(--text-muted); text-decoration: underline; }
+  .badge-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow">CLI + bibliothèque TypeScript</div>
+    <h1>phash-dedupe</h1>
+    <p class="lede">
+      Trouve les images quasi-identiques dans un dossier — mêmes photos recompressées,
+      recadrées ou renommées. Aucun service cloud, aucune clé API. 100% local, MIT.
+    </p>
+    <div class="badge-row">
+      <span class="badge">dHash (difference hash)</span>
+      <span class="badge">Zéro dépendance cloud</span>
+      <span class="badge">MIT</span>
+    </div>
+    <div class="cta-row">
+      <a class="btn primary" href="https://github.com/Pikatchu99/phash-dedupe">Voir sur GitHub</a>
+      <a class="btn ghost" href="#usage">Utilisation</a>
+      <a class="btn ghost" href="#library">API</a>
+    </div>
+  </header>
+
+  <section id="why">
+    <h2>Pourquoi</h2>
+    <p>
+      Né d'un besoin concret : sourcer des packs de stickers (memes, réactions) depuis des
+      résultats de recherche publics fait ressortir la même photo encore et encore, repostée
+      sous des noms différents, dans des packs différents, parfois recompressée ou recadrée
+      de quelques pixels. La déduplication par hash de fichier (byte à byte) rate tout ça.
+      <code>phash-dedupe</code> non.
+    </p>
+  </section>
+
+  <section id="how">
+    <h2>Comment ça marche</h2>
+    <ol class="steps">
+      <li>Redimensionne l'image en une minuscule vignette <code>9×8</code> en niveaux de gris (aspect ratio ignoré).</li>
+      <li>Pour chaque ligne, compare chaque pixel à celui immédiatement à sa droite : <code>1</code> s'il est plus clair, <code>0</code> sinon — 8 comparaisons × 8 lignes = une empreinte de 64 bits.</li>
+      <li>Deux images sont considérées « identiques » si leurs empreintes ne diffèrent que sur quelques bits — la <strong>distance de Hamming</strong>.</li>
+    </ol>
+    <p class="muted">
+      Le dHash encode le gradient de luminosité <em>relatif</em> entre pixels voisins plutôt que
+      la luminosité absolue par rapport à une moyenne globale, ce qui le rend bien plus robuste
+      à la recompression, au recadrage léger et aux changements de contraste qu'un simple aHash.
+      Il n'est pas immunisé contre les faux positifs pour autant — voir
+      <a href="#limits">Limites</a> avant de brancher <code>--delete</code> dans un script non supervisé.
+    </p>
+  </section>
+
+  <section id="install">
+    <h2>Installation</h2>
+    <p>Pas encore publié sur npm — cloner et builder en local :</p>
+    <pre><code>git clone git@github.com:Pikatchu99/phash-dedupe.git
+cd phash-dedupe
+pnpm install
+pnpm build</code></pre>
+    <p>Lancer la CLI avec <code>node ./dist/cli.js &lt;dossier&gt;</code>, ou la lier globalement :</p>
+    <pre><code>pnpm link --global
+phash-dedupe ./stickers</code></pre>
+  </section>
+
+  <section id="usage">
+    <h2>Utilisation CLI</h2>
+    <pre><code>phash-dedupe ./stickers</code></pre>
+    <pre><code>3 duplicate cluster(s), 4 file(s) redundant:
+
+  keep   stickers/cats/angry-cat-05.jpg
+  remove stickers/cats/angry-cat-19.jpg
+
+  keep   stickers/cute/side-eye-01.jpg
+  remove stickers/drama/dramatic-10.jpg
+  remove stickers/drama/dramatic-12.jpg
+  ...</code></pre>
+
+    <h3>Options</h3>
+    <table>
+      <thead>
+        <tr><th>Flag</th><th>Défaut</th><th>Effet</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>--threshold &lt;n&gt;</code></td><td><code>6</code></td><td>Distance de Hamming max (sur 64) pour compter comme match. Plus bas = plus strict.</td></tr>
+        <tr><td><code>--hash-size &lt;n&gt;</code></td><td><code>8</code></td><td>Résolution du hash (<code>n × n</code> bits). Plus haut = plus de détail, moins tolérant au bruit.</td></tr>
+        <tr><td><code>--no-recursive</code></td><td>off</td><td>Ne scanne pas les sous-dossiers.</td></tr>
+        <tr><td><code>--json</code></td><td>off</td><td>Affiche <code>{ clusters, toDelete }</code> en JSON au lieu d'un rapport texte.</td></tr>
+        <tr><td><code>--delete</code></td><td>off</td><td>Supprime tous les fichiers d'un cluster sauf le premier par ordre alphabétique.</td></tr>
+        <tr><td><code>--dry-run</code></td><td>off</td><td>À combiner avec <code>--delete</code> pour prévisualiser sans supprimer.</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      Workflow recommandé : lancer sans <code>--delete</code> d'abord, lire le rapport, ajuster
+      <code>--threshold</code> si besoin, relancer avec <code>--delete --dry-run</code> pour
+      confirmer la liste exacte, puis retirer <code>--dry-run</code> pour de vrai.
+    </p>
+
+    <h3>Choisir un seuil</h3>
+    <table>
+      <thead><tr><th>Seuil</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td>0–3</td><td>Très sûr. Quasi aucun faux positif — même photo, crop/compression différents.</td></tr>
+        <tr><td>4–8</td><td>Attrape plus de reposts, mais commence à signaler des images sans rapport qui partagent juste un gradient de luminosité similaire (ex. deux fonds unis très éclairés). Vérifier chaque match visuellement avant de faire confiance à <code>--delete</code> dans cette plage.</td></tr>
+        <tr><td>9+</td><td>Trop large pour la plupart des jeux de photos réels — surtout du bruit.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="library">
+    <h2>Utilisation en bibliothèque</h2>
+    <pre><code>import { findDuplicates } from "phash-dedupe";
+
+const { clusters } = await findDuplicates("./stickers", { threshold: 6 });
+for (const cluster of clusters) {
+  console.log("near-duplicates:", cluster);
+}</code></pre>
+
+    <p>Les briques de plus bas niveau sont aussi exportées, pour du hachage incrémental, du cache de hash entre runs, ou comparer deux dossiers séparés entre eux :</p>
+    <pre><code>import { scanImages, hashImage, hammingDistance, findDuplicatePairs, clusterDuplicates } from "phash-dedupe";
+
+const paths = await scanImages("./stickers");
+const hashes = new Map(await Promise.all(paths.map(async (p) => [p, await hashImage(p)] as const)));
+const pairs = findDuplicatePairs(hashes, 6);
+const clusters = clusterDuplicates(pairs);</code></pre>
+  </section>
+
+  <section id="limits">
+    <h2>Limites</h2>
+    <ul class="limits">
+      <li><strong>Les images plates/simples dégénèrent en faux positifs.</strong> Un dHash est construit entièrement à partir de gradients de luminosité gauche-droite ; une image de couleur unie (ou une photo avec un grand fond plat, comme un fond vert mal retiré) n'a aucun gradient et hash vers <code>0</code>, ce qui peut matcher d'autres images à faible détail. Toujours vérifier visuellement les matchs à seuil ≥7 avant de supprimer.</li>
+      <li><strong>Comparaison en O(n²).</strong> Chaque hash est comparé à tous les autres. Ça passe pour quelques milliers d'images (un run complet de sourcing de stickers) ; pour une bibliothèque bien plus grande il faudrait bucketiser les hashs d'abord (ex. par préfixe locality-sensitive) avant la passe par paires — non implémenté ici.</li>
+      <li><strong>Rotation et gros recadrages non gérés.</strong> Le dHash n'est pas invariant à la rotation. Un repost tourné à 90° de la même photo ne matchera pas.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>MIT © Yemalin Modeste — <a href="https://github.com/Pikatchu99/phash-dedupe">github.com/Pikatchu99/phash-dedupe</a></p>
+  </footer>
+</div>
+
+</body>
+</html>
